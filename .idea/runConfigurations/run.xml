@@ -1,7 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="run" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="sk.fri.uniza.App" />
-    <module name="IoTNode" />
+    <module name="PrenosDat_semestralka1" />
+    <option name="PROGRAM_PARAMETERS" value="9000" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
