@@ -1,11 +1,13 @@
 package sk.fri.uniza;
 import retrofit2.Call;
 import retrofit2.Response;
-import sk.fri.uniza.model.Location;
-import sk.fri.uniza.model.WeatherData;
+import sk.fri.uniza.model.*;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Hotovo
  */
@@ -33,6 +35,57 @@ public class App {
 
         System.out.println("Po autorizácii");
         sAutorizaciou(iotNode, token);
+
+        //dobrovolna uloha 2
+        //getnutie 3 rôznych udajov a ich odoslanie, dookola kazdu minutu
+        MojeDataRetrofit mdr = new MojeDataRetrofit();
+        try {
+            mdr.getDobrovolnaUloha2Service().vytvorField(new FieldData("humidity", "%", "Vlhkost")).execute();
+            mdr.getDobrovolnaUloha2Service().vytvorField(new FieldData("airTemperature", "°C", "Teplota vzduchu")).execute();
+            mdr.getDobrovolnaUloha2Service().vytvorField(new FieldData("battery", "%", "Nabitie baterie")).execute();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("nastala chyba vo vytvarani fieldu");
+        }
+
+        while(true) {
+            //getni údaje
+            Call<Map<String, String>> getSomeWeatherData =
+                    iotNode.getWeatherStationService()
+                            .getCurrentWeatherAsMap("station_1",
+                                    List.of("humidity", "airTemperature",
+                                            "batteryLife"));
+            try {
+                // Odoslanie požiadavky na server pomocou REST rozhranie
+                Response<Map<String, String>> response = getSomeWeatherData.execute();
+                if (response.isSuccessful()) { //Získanie údajov vo forme Mapy stringov
+                    Map<String, String> body = response.body();
+                    String bodyString = body.toString();
+                    System.out.println("body spravy je: ");
+
+                    String airTemperature = bodyString.substring(bodyString.indexOf("=")+1,bodyString.indexOf(","));
+                    bodyString =  bodyString.substring(bodyString.indexOf(",")+1);
+                    String humidity = bodyString.substring(bodyString.indexOf("=")+1,bodyString.indexOf(","));
+                    bodyString =  bodyString.substring(bodyString.indexOf(",")+1);
+                    String battery = bodyString.substring(bodyString.indexOf("=")+1,bodyString.indexOf("}"));
+                    System.out.println("Parsovane data:" + airTemperature + " " +humidity +" "+battery);
+
+                    mdr.getDobrovolnaUloha2Service().posliData("1", "airTemperature", new MojeData("31/01/2020 14:00", airTemperature, "double")).execute();
+                    mdr.getDobrovolnaUloha2Service().posliData("1", "humidity", new MojeData("31/01/2020 14:00", humidity, "integer")).execute();
+                    mdr.getDobrovolnaUloha2Service().posliData("1", "battery", new MojeData("31/01/2020 14:00", battery, "integer")).execute();
+
+                    TimeUnit.MINUTES.sleep(1);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("nastala chyba v response");
+            }
+            catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("nastala chyba v cakani");
+            }
+        }
     }
 
     static void sAutorizaciou(IotNode iotNode, String token) {
